@@ -5,8 +5,10 @@ import com.raiseup.repository.PersonRepository;
 
 import java.sql.*;
 import java.time.LocalDate;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 public class PersonService  implements PersonRepository{
 
@@ -49,14 +51,15 @@ public class PersonService  implements PersonRepository{
 
     @Override
     public Optional<Person> findPersonById(Long id) {
-        Person p = new Person();
+        Person p =null;
         String findByIdSQL="SELECT ID,FIRST_NAME,LAST_NAME,BIRTH_DATE,SALARY FROM PERSON WHERE ID=?";
         try{
 
-            PreparedStatement ps = connection.prepareStatement(findByIdSQL, Statement.RETURN_GENERATED_KEYS);
+            PreparedStatement ps = connection.prepareStatement(findByIdSQL);
             ps.setLong(1,id);
             ResultSet rs = ps.executeQuery();
             while (rs.next()){
+                p= new Person();
                 long personId = rs.getLong("ID");
                 String firstName = rs.getString("FIRST_NAME");
                 String lastName = rs.getString("LAST_NAME");
@@ -73,7 +76,8 @@ public class PersonService  implements PersonRepository{
             System.out.println(sqlException.getMessage());
         }
         System.out.println("returned person: "+p);
-        return Optional.of(p);
+
+        return Optional.ofNullable(p);
     }
 
     @Override
@@ -83,12 +87,26 @@ public class PersonService  implements PersonRepository{
 
     @Override
     public void delete(Person person) {
-
+        String DELETE_PERSON_SQL="DELETE FROM PERSON WHERE ID=?";
+        try{
+            PreparedStatement ps = connection.prepareStatement(DELETE_PERSON_SQL);
+            ps.setLong(1,person.getId());
+            int i = ps.executeUpdate();
+        }catch (SQLException sqlException){
+            System.out.println(sqlException.getMessage());
+        }
     }
 
     @Override
     public void deleteById(Long id) {
-
+        String DELETE_PERSON_SQL="DELETE FROM PERSON WHERE ID=?";
+        try{
+            PreparedStatement ps = connection.prepareStatement(DELETE_PERSON_SQL);
+            ps.setLong(1,id);
+            int i = ps.executeUpdate();
+        }catch (SQLException sqlException){
+            System.out.println(sqlException.getMessage());
+        }
     }
 
     @Override
@@ -99,5 +117,21 @@ public class PersonService  implements PersonRepository{
     @Override
     public Person updateById(Long id) {
         return null;
+    }
+
+    public void deleteAll(Person...people) {
+        String ids = Arrays.stream(people)
+                .map(Person::getId)
+                .map(String::valueOf)
+                .collect(Collectors.joining(","));
+        String DELETE_ALL_SQL = String.format("DELETE FROM PERSON WHERE ID IN (%s)", ids);
+                
+        try {
+            Statement st = connection.createStatement();
+            int i = st.executeUpdate(DELETE_ALL_SQL);
+            System.out.println(i+" rows deleted!");
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
     }
 }
